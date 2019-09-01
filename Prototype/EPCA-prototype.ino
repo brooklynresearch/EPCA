@@ -1,6 +1,10 @@
 // libraries
 #include <Bounce.h>
 #include <Timer.h>
+#include <Audio.h>
+#include <Wire.h>
+#include <SPI.h>
+#include <SD.h>
 #include "definitions.h"
 
 bool gameStarted = false;
@@ -8,6 +12,12 @@ bool gameStarted = false;
 // motor movement variables
 const uint8_t motorSpeed = 255;
 const uint8_t multiplierVals[6] = {6, 4, 4, 2, 2, 2};
+
+// audio setup
+AudioPlaySdRaw           playSdWav1;
+AudioOutputAnalogStereo  dacs1;
+AudioConnection          patchCord1(playSdWav1, 0, dacs1, 0);
+AudioConnection          patchCord2(playSdWav1, 1, dacs1, 1);
 
 void initGame() {   // runs once on setup
   pinMode(RESET_PIN, INPUT_PULLUP);
@@ -25,7 +35,7 @@ void initGame() {   // runs once on setup
     }
 
   }
-  
+
   Serial.println();
   Serial.println();
   Serial.println("---------------------------");
@@ -58,7 +68,13 @@ void resetGame() { // runs at start up or master reset
 
 void setup() {
   Serial.begin(115200);
+  AudioMemory(8);
   initGame();
+
+  if (!SD.begin(BUILTIN_SDCARD)) {
+    Serial.println("unable to read from SD card");
+    return;
+  }
 }
 
 void loop() {
@@ -77,6 +93,10 @@ void getSensorVals() {    // read input sensors on skee ball lanes
     currentVal[i] = digitalRead(playerInputs[i]);
 
     if (!currentVal[i] && previousVal[i]) { // sensor has been triggered
+
+      // call audio file
+      playSdWav1.play("ball.wav");
+      delay(10); // wait for library to parse WAV info
 
       uint8_t playerNum = floor(i / 6);  // first 6 vals are p1, next 6 are p2, ... p6
       uint8_t multiplier =  multiplierVals[i % 6];
@@ -99,30 +119,30 @@ void movePlayer(uint8_t playerNum, uint8_t multiplier) {  // calculate time peri
   unsigned long period = multiplier * 1000;
   motorPosition[playerNum] += period;
   playerMovementPeriod[playerNum] += period;
-  
+
   Serial.print("Moving player ");
   Serial.print(playerNum + 1);
   Serial.print(" forward for ");
-  Serial.print(period/1000);
+  Serial.print(period / 1000);
   Serial.println(" seconds");
   Serial.println();
 
   Serial.print("Total period time: ");
-  Serial.print(playerMovementPeriod[playerNum]/1000);
+  Serial.print(playerMovementPeriod[playerNum] / 1000);
   Serial.println(" seconds");
   Serial.println();
-  
+
   digitalWrite(motorDirectionA[playerNum], HIGH); // move player forward
   digitalWrite(motorDirectionB[playerNum], LOW);
   analogWrite(motorEnable[playerNum], motorSpeed);
 
-  if(!motorMoving[playerNum]) startMillis[playerNum] = millis(); // start the timer the first time -- if motor is already moving, the player triggered a sensor before the original movement finished
-  motorMoving[playerNum] = true; 
+  if (!motorMoving[playerNum]) startMillis[playerNum] = millis(); // start the timer the first time -- if motor is already moving, the player triggered a sensor before the original movement finished
+  motorMoving[playerNum] = true;
 }
 
-void playerCheck(){
-  for(int i = 0; i < numPlayers; i++){
-    if(motorMoving[i]) {      
+void playerCheck() {
+  for (int i = 0; i < numPlayers; i++) {
+    if (motorMoving[i]) {
       if (millis() - startMillis[i] >= playerMovementPeriod[i]) {
         stopPlayer(i);
       }
@@ -176,9 +196,11 @@ void getWinner() {  // check if right side limit switch is triggered
         Serial.println();
 
         // call audio file
+        playSdWav1.play("win.wav");
+        delay(10); // wait for library to parse WAV info
 
         //delay for effect?
-        delay(1500);
+        delay(3000);
 
         gameStarted = false;
 

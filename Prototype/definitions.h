@@ -88,44 +88,103 @@ uint8_t playerInputs[numSensors] = {
   P1_25_LEFT,
   P1_25_MIDDLE,
   P1_25_RIGHT
+  //  P2_100,
+  //  P2_50_LEFT,
+  //  P2_50_RIGHT,
+  //  P2_25_LEFT,
+  //  P2_25_MIDDLE,
+  //  P2_25_RIGHT,
+  //  P3_100,
+  //  P3_50_LEFT,
+  //  P3_50_RIGHT,
+  //  P3_25_LEFT,
+  //  P3_25_MIDDLE,
+  //  P3_25_RIGHT,
+  //  P4_100,
+  //  P4_50_LEFT,
+  //  P4_50_RIGHT,
+  //  P4_25_LEFT,
+  //  P4_25_MIDDLE,
+  //  P4_25_RIGHT,
+  //  P5_100,
+  //  P5_50_LEFT,
+  //  P5_50_RIGHT,
+  //  P5_25_LEFT,
+  //  P5_25_MIDDLE,
+  //  P5_25_RIGHT,
+  //  P6_100,
+  //  P6_50_LEFT,
+  //  P6_50_RIGHT,
+  //  P6_25_LEFT,
+  //  P6_25_MIDDLE,
+  //  P6_25_RIGHT
 };
 
 uint8_t limitSwitchesLeft[numPlayers] = {
   P1_LIMIT_LEFT
+  //  P2_LIMIT_LEFT,
+  //  P3_LIMIT_LEFT,
+  //  P4_LIMIT_LEFT,
+  //  P5_LIMIT_LEFT,
+  //  P6_LIMIT_LEFT
 };
 
 uint8_t limitSwitchesRight[numPlayers] = {
   P1_LIMIT_RIGHT
+  //  P2_LIMIT_RIGHT,
+  //  P3_LIMIT_RIGHT,
+  //  P4_LIMIT_RIGHT,
+  //  P5_LIMIT_RIGHT,
+  //  P6_LIMIT_RIGHT
 };
 
 
 // motor arrays
 uint8_t motorEnable[numPlayers] = {
   P1_MOTOR_ENABLE
+  //  P2_MOTOR_ENABLE,
+  //  P3_MOTOR_ENABLE,
+  //  P4_MOTOR_ENABLE,
+  //  P5_MOTOR_ENABLE,
+  //  P6_MOTOR_ENABLE
 };
 
 byte motorDirectionA[numPlayers] = {
   P1_MOTOR_DIR_A
+  //  P2_MOTOR_DIR_A,
+  //  P3_MOTOR_DIR_A,
+  //  P4_MOTOR_DIR_A,
+  //  P5_MOTOR_DIR_A,
+  //  P6_MOTOR_DIR_A
 };
 
 byte motorDirectionB[numPlayers] = {
   P1_MOTOR_DIR_B
+  //  P2_MOTOR_DIR_B,
+  //  P3_MOTOR_DIR_B,
+  //  P4_MOTOR_DIR_B,
+  //  P5_MOTOR_DIR_B,
+  //  P6_MOTOR_DIR_B
 };
 
 uint8_t motorPosition[numPlayers] = {
   0
+  //0, 0, 0, 0, 0
 };
 
 bool motorMoving[numPlayers] = {
   false
+  // false, false, false, false, false
 };
 
 unsigned long startMillis[numPlayers] = {
   0
+  //0, 0, 0, 0, 0
 };
 
 unsigned long playerMovementPeriod[numPlayers] = {
   0
+  //0, 0, 0, 0, 0
 };
 
 // skee ball sensor value arrays
@@ -152,18 +211,18 @@ Bounce p1LimitRight = Bounce(P1_LIMIT_RIGHT, 10);
 // arays for buttons
 Bounce leftLimits[numPlayers] = {
   p1LimitLeft
-//  p2LimitLeft,
-//  p3LimitLeft,
-//  p4LimitLeft,
-//  p5LimitLeft,
-//  p6LimitLeft
+  //  p2LimitLeft,
+  //  p3LimitLeft,
+  //  p4LimitLeft,
+  //  p5LimitLeft,
+  //  p6LimitLeft
 };
 
 Bounce rightLimits[numPlayers] = {
   p1LimitRight
-//  p2LimitRight,
-//  p3LimitRight,
-//  p4LimitRight,
-//  p5LimitRight,
-//  p6LimitRight
+  //  p2LimitRight,
+  //  p3LimitRight,
+  //  p4LimitRight,
+  //  p5LimitRight,
+  //  p6LimitRight
 };
