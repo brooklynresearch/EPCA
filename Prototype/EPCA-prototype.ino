@@ -5,23 +5,30 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
+#include <FastLED.h>
 #include "definitions.h"
 
+// game
 bool gameStarted = false;
 
-// motor movement variables
+// motor movement
 const uint8_t motorSpeed = 255;
-const uint8_t multiplierVals[6] = {6, 4, 4, 2, 2, 2};
+const uint8_t multiplierVals[6] = {6, 6, 6, 4, 4, 2};
 
-// audio setup
-AudioPlaySdRaw           playSdWav1;
+// lights
+CRGB leds[NUM_LEDS];
+
+// audio
+AudioPlaySdWav           playSdWav1;
 AudioOutputAnalogStereo  dacs1;
 AudioConnection          patchCord1(playSdWav1, 0, dacs1, 0);
 AudioConnection          patchCord2(playSdWav1, 1, dacs1, 1);
+uint8_t soundNum = 0;
 
 void initGame() {   // runs once on setup
   pinMode(RESET_PIN, INPUT_PULLUP);
 
+  // init all IO pins
   for (int i = 0; i < numSensors; i++) {
     pinMode(playerInputs[i], INPUT);
     digitalWrite(playerInputs[i], HIGH); // need initial pullup for beam break sensors
@@ -35,6 +42,10 @@ void initGame() {   // runs once on setup
     }
 
   }
+
+  // setup LEDs
+  FastLED.addLeds<WS2813, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.setBrightness(128);
 
   Serial.println();
   Serial.println();
@@ -55,7 +66,7 @@ void resetGame() { // runs at start up or master reset
     previousVal[i] = 0;
   }
 
-  // rest player positions to home
+  // move players to home
   resetPlayers();
 
   Serial.println("---------------------------");
@@ -195,12 +206,7 @@ void getWinner() {  // check if right side limit switch is triggered
         Serial.println();
         Serial.println();
 
-        // call audio file
-        playSdWav1.play("win.wav");
-        delay(10); // wait for library to parse WAV info
-
-        //delay for effect?
-        delay(3000);
+        playWinner();
 
         gameStarted = false;
 
@@ -213,6 +219,31 @@ void getWinner() {  // check if right side limit switch is triggered
       }
     }
   }
+}
+
+void playWinner() {
+  if (soundNum >= 3) soundNum = 0;
+  const char* winSounds[3] = {
+    "win1.wav",
+    "win2.wav",
+    "win3.wav"
+  };
+
+  // call audio file
+  playSdWav1.play(winSounds[soundNum]);
+  delay(10); // wait for library to parse WAV info
+
+  // lights
+  fill_solid(leds, NUM_LEDS, CRGB::White);
+  FastLED.show();
+
+  // wait until sound effect finishes playing
+  while (playSdWav1.isPlaying()) {
+  }
+
+  FastLED.clear();
+
+  soundNum++;
 }
 
 void getHome() {  // check if left side limit switch is triggered

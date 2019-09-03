@@ -1,6 +1,6 @@
 // players
-#define numPlayers 1
-#define numSensors (numPlayers * 6)
+const uint8_t numPlayers = 1;
+const uint8_t numSensors = numPlayers * 6;
 
 // switch pins
 #define RESET_PIN 11
@@ -18,7 +18,11 @@
 //#define P6_LIMIT_LEFT 12
 //#define P6_LIMIT_RIGHT 13
 
-// motor control pins
+// LED pins
+#define LED_PIN 20
+#define NUM_LEDS 25
+
+// motor pins
 #define P1_MOTOR_ENABLE 8
 #define P1_MOTOR_DIR_A 9
 #define P1_MOTOR_DIR_B 10
@@ -38,17 +42,17 @@
 //#define P6_MOTOR_DIR_A 9
 //#define P6_MOTOR_DIR_B 10
 
-/** player input pins: top to bottom, left to right:
-          100
+/** player input pins- top to bottom, left to right:
+     100  100  100
         50   50
-      25  25  25
+           25
 */
-#define P1_100 2
-#define P1_50_LEFT 3
-#define P1_50_RIGHT 4
-#define P1_25_LEFT 5
-#define P1_25_MIDDLE 6
-#define P1_25_RIGHT 7
+#define P1_100_LEFT 2
+#define P1_100_MIDDLE 3
+#define P1_100_RIGHT 4
+#define P1_50_LEFT 5
+#define P1_50_RIGHT 6
+#define P1_25 7
 //#define P2_100 2
 //#define P2_50_LEFT 3
 //#define P2_50_RIGHT 4
@@ -82,12 +86,12 @@
 
 // input sensor arrays
 uint8_t playerInputs[numSensors] = {
-  P1_100,
+  P1_100_LEFT,
+  P1_100_MIDDLE,
+  P1_100_RIGHT,
   P1_50_LEFT,
   P1_50_RIGHT,
-  P1_25_LEFT,
-  P1_25_MIDDLE,
-  P1_25_RIGHT
+  P1_25
   //  P2_100,
   //  P2_50_LEFT,
   //  P2_50_RIGHT,
