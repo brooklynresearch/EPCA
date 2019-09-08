@@ -7,13 +7,20 @@
 #include <SD.h>
 #include <FastLED.h>
 #include "definitions.h"
+#include "debug.h"
+
+#define DEBUG // comment out to turn of debug serial printout
 
 // game
 bool gameStarted = false;
 
 // motor movement
-const uint8_t motorSpeed = 255;
-const uint8_t multiplierVals[6] = {6, 6, 6, 4, 4, 2};
+const uint8_t playerAdvance = 4; // client wants 4" movement, 5 sec @ 255 on 40RPM ~= 4" --> once we have final motors need to re-calculate
+const uint8_t multiplierVals[3] = {
+  playerAdvance * 3,
+  playerAdvance * 1.5,
+  playerAdvance
+};
 
 // lights
 CRGB leds[NUM_LEDS];
@@ -27,6 +34,7 @@ uint8_t soundNum = 0;
 
 void initGame() {   // runs once on setup
   pinMode(RESET_PIN, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
 
   // init all IO pins
   for (int i = 0; i < numSensors; i++) {
@@ -36,7 +44,7 @@ void initGame() {   // runs once on setup
     if (i < numPlayers) {
       pinMode(limitSwitchesLeft[i], INPUT_PULLUP);
       pinMode(limitSwitchesRight[i], INPUT_PULLUP);
-      pinMode(motorEnable[i], OUTPUT);
+      //pinMode(motorEnable[i], OUTPUT);
       pinMode(motorDirectionA[i], OUTPUT);
       pinMode(motorDirectionB[i], OUTPUT);
     }
@@ -44,15 +52,15 @@ void initGame() {   // runs once on setup
   }
 
   // setup LEDs
-  FastLED.addLeds<WS2813, LED_PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.setBrightness(128);
+  FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
+  //FastLED.setBrightness(128);
 
-  Serial.println();
-  Serial.println();
-  Serial.println("---------------------------");
-  Serial.println("Game Online");
-  Serial.println("---------------------------");
-  Serial.println();
+  DEBUG_PRINTLN();
+  DEBUG_PRINTLN();
+  DEBUG_PRINTLN("---------------------------");
+  DEBUG_PRINTLN("Game Online");
+  DEBUG_PRINTLN("---------------------------");
+  DEBUG_PRINTLN();
 
   resetGame();
 }
@@ -64,15 +72,25 @@ void resetGame() { // runs at start up or master reset
   for (uint8_t i = 0; i < numSensors; i++) {
     currentVal[i] = 0;
     previousVal[i] = 0;
+
+    if (i < numPlayers) {
+      playerMovementPeriod[i] = 0;
+      motorMoving[i] = false;
+    }
   }
+
+  // reset lights
+  fill_solid(leds, NUM_LEDS, CRGB::Black);
+  FastLED.show();
 
   // move players to home
   resetPlayers();
 
-  Serial.println("---------------------------");
-  Serial.println("Game reset");
-  Serial.println("---------------------------");
-  Serial.println();
+  DEBUG_PRINTLN();
+  DEBUG_PRINTLN("---------------------------");
+  DEBUG_PRINTLN("Game reset");
+  DEBUG_PRINTLN("---------------------------");
+  DEBUG_PRINTLN();
 
   gameStarted = true;
 }
@@ -83,7 +101,7 @@ void setup() {
   initGame();
 
   if (!SD.begin(BUILTIN_SDCARD)) {
-    Serial.println("unable to read from SD card");
+    DEBUG_PRINTLN("unable to read from SD card");
     return;
   }
 }
@@ -106,18 +124,18 @@ void getSensorVals() {    // read input sensors on skee ball lanes
     if (!currentVal[i] && previousVal[i]) { // sensor has been triggered
 
       // call audio file
-      playSdWav1.play("ball.wav");
-      delay(10); // wait for library to parse WAV info
+      //      playSdWav1.play("ball.wav");
+      //      delay(10); // wait for library to parse WAV info
 
-      uint8_t playerNum = floor(i / 6);  // first 6 vals are p1, next 6 are p2, ... p6
-      uint8_t multiplier =  multiplierVals[i % 6];
+      uint8_t playerNum = floor(i / numSensors);  // first 6 vals are p1, next 6 are p2, ... p6
+      uint8_t multiplier =  multiplierVals[i % numSensors];
 
-      Serial.print("Player ");
-      Serial.print(playerNum + 1);
-      Serial.print(" sensor on pin ");
-      Serial.print(playerInputs[i]);
-      Serial.print(" was triggered.");
-      Serial.println();
+      DEBUG_PRINT("Player ");
+      DEBUG_PRINT(playerNum + 1);
+      DEBUG_PRINT(" sensor on pin ");
+      DEBUG_PRINT(playerInputs[i]);
+      DEBUG_PRINT(" was triggered.");
+      DEBUG_PRINTLN();
 
       movePlayer(playerNum, multiplier);
     }
@@ -131,21 +149,20 @@ void movePlayer(uint8_t playerNum, uint8_t multiplier) {  // calculate time peri
   motorPosition[playerNum] += period;
   playerMovementPeriod[playerNum] += period;
 
-  Serial.print("Moving player ");
-  Serial.print(playerNum + 1);
-  Serial.print(" forward for ");
-  Serial.print(period / 1000);
-  Serial.println(" seconds");
-  Serial.println();
+  DEBUG_PRINT("Moving player ");
+  DEBUG_PRINT(playerNum + 1);
+  DEBUG_PRINT(" forward for ");
+  DEBUG_PRINT(period / 1000);
+  DEBUG_PRINTLN(" seconds");
+  DEBUG_PRINTLN();
 
-  Serial.print("Total period time: ");
-  Serial.print(playerMovementPeriod[playerNum] / 1000);
-  Serial.println(" seconds");
-  Serial.println();
+  DEBUG_PRINT("Total period time: ");
+  DEBUG_PRINT(playerMovementPeriod[playerNum] / 1000);
+  DEBUG_PRINTLN(" seconds");
+  DEBUG_PRINTLN();
 
-  digitalWrite(motorDirectionA[playerNum], HIGH); // move player forward
-  digitalWrite(motorDirectionB[playerNum], LOW);
-  analogWrite(motorEnable[playerNum], motorSpeed);
+  digitalWrite(motorDirectionA[playerNum], HIGH); // move player forward: A = HIGH, B = 0-254 (0 is fastest)
+  analogWrite(motorDirectionB[playerNum], 0);
 
   if (!motorMoving[playerNum]) startMillis[playerNum] = millis(); // start the timer the first time -- if motor is already moving, the player triggered a sensor before the original movement finished
   motorMoving[playerNum] = true;
@@ -162,20 +179,20 @@ void playerCheck() {
 }
 
 void stopPlayer(uint8_t playerNum) {
-  analogWrite(motorEnable[playerNum], 0);
+  digitalWrite(motorDirectionA[playerNum], LOW); // stop movement: A = LOW, B = 0 OR A = HIGH, B = 255
+  analogWrite(motorDirectionB[playerNum], 0);
   playerMovementPeriod[playerNum] = 0;
   motorMoving[playerNum] = false;
 }
 
 void resetPlayers() {
   for (int i = 0; i < numPlayers; i++) {
-    Serial.print("Moving player ");
-    Serial.print(i + 1);
-    Serial.println(" to home");
+    DEBUG_PRINT("Moving player ");
+    DEBUG_PRINT(i + 1);
+    DEBUG_PRINTLN(" to home");
 
-    digitalWrite(motorDirectionA[i], LOW);   // move player backward
-    digitalWrite(motorDirectionB[i], HIGH);
-    analogWrite(motorEnable[i], motorSpeed);
+    digitalWrite(motorDirectionA[i], LOW);   // move player backward: A = LOW, B = 255-1 (255 is fastest)
+    analogWrite(motorDirectionB[i], 255);
   }
 
   bool allHome = false;
@@ -198,22 +215,28 @@ void getWinner() {  // check if right side limit switch is triggered
   for (int i = 0; i < numPlayers; i++) {
     if (rightLimits[i].update()) {
       if (rightLimits[i].fallingEdge()) {
-        analogWrite(motorEnable[i], 0);
 
-        Serial.println();
-        Serial.print("Winner! Player ");
-        Serial.print(i + 1);
-        Serial.println();
-        Serial.println();
+        // stop all players
+        for (uint8_t i = 0; i < numPlayers; i++) {
+          digitalWrite(motorDirectionA[i], LOW);
+          analogWrite(motorDirectionB[i], 0);
+        }
+
+        DEBUG_PRINTLN();
+        DEBUG_PRINT("Winner! Player ");
+        DEBUG_PRINT(i + 1);
+        DEBUG_PRINTLN();
+        DEBUG_PRINTLN();
 
         playWinner();
 
         gameStarted = false;
 
-        Serial.println("---------------------------");
-        Serial.println("Game End");
-        Serial.println("---------------------------");
-        Serial.println();
+        DEBUG_PRINTLN();
+        DEBUG_PRINTLN("---------------------------");
+        DEBUG_PRINTLN("Game End");
+        DEBUG_PRINTLN("---------------------------");
+        DEBUG_PRINTLN();
 
         resetGame();  //reset game
       }
@@ -224,9 +247,9 @@ void getWinner() {  // check if right side limit switch is triggered
 void playWinner() {
   if (soundNum >= 3) soundNum = 0;
   const char* winSounds[3] = {
-    "win1.wav",
-    "win2.wav",
-    "win3.wav"
+    "WIN1.WAV",
+    "WIN2.WAV",
+    "WIN3.WAV"
   };
 
   // call audio file
@@ -238,8 +261,7 @@ void playWinner() {
   FastLED.show();
 
   // wait until sound effect finishes playing
-  while (playSdWav1.isPlaying()) {
-  }
+  delay(4200);
 
   FastLED.clear();
 
@@ -250,13 +272,14 @@ void getHome() {  // check if left side limit switch is triggered
   for (int i = 0; i < numPlayers; i++) {
     if (leftLimits[i].update()) {
       if (leftLimits[i].fallingEdge()) {
-        Serial.println();
-        Serial.print("Player ");
-        Serial.print(i + 1);
-        Serial.print(" home switch hit");
-        Serial.println();
+        DEBUG_PRINTLN();
+        DEBUG_PRINT("Player ");
+        DEBUG_PRINT(i + 1);
+        DEBUG_PRINT(" home switch hit");
+        DEBUG_PRINTLN();
 
-        analogWrite(motorEnable[i], 0);   // stop the motor
+        //analogWrite(motorEnable[i], 0);   // stop the motor
+        analogWrite(motorDirectionB[i], 0);
         motorPosition[i] = 0; // reset postion val
       }
     }
@@ -266,9 +289,9 @@ void getHome() {  // check if left side limit switch is triggered
 bool resetCheck() {  // check if master reset button was pressed
   if (resetButton.update()) {
     if (resetButton.fallingEdge()) {
-      Serial.println();
-      Serial.println("Reset switch was pressed, resetting game...");
-      Serial.println();
+      DEBUG_PRINTLN();
+      DEBUG_PRINTLN("Reset switch was pressed, resetting game...");
+      DEBUG_PRINTLN();
 
       return true;
     }
