@@ -15,10 +15,10 @@
 bool gameStarted = false;
 
 // motor movement
-const uint8_t playerAdvance = 4; // client wants 4" movement, 5 sec @ 255 on 40RPM ~= 4" --> once we have final motors need to re-calculate
-const uint8_t multiplierVals[3] = {
+const float playerAdvance = .75; // client wants 4" movement, .75 sec @ 255 on 168RPM ~= 4"
+const float multiplierVals[3] = {
   playerAdvance * 3,
-  playerAdvance * 1.5,
+  playerAdvance * 2,
   playerAdvance
 };
 
@@ -86,6 +86,7 @@ void resetGame() { // runs at start up or master reset
   // move players to home
   resetPlayers();
 
+
   DEBUG_PRINTLN();
   DEBUG_PRINTLN("---------------------------");
   DEBUG_PRINTLN("Game reset");
@@ -97,6 +98,7 @@ void resetGame() { // runs at start up or master reset
 
 void setup() {
   Serial.begin(115200);
+  //analogWriteFrequency(20, 20000);
   AudioMemory(8);
   initGame();
 
@@ -122,13 +124,8 @@ void getSensorVals() {    // read input sensors on skee ball lanes
     currentVal[i] = digitalRead(playerInputs[i]);
 
     if (!currentVal[i] && previousVal[i]) { // sensor has been triggered
-
-      // call audio file
-      //      playSdWav1.play("ball.wav");
-      //      delay(10); // wait for library to parse WAV info
-
       uint8_t playerNum = floor(i / numSensors);  // first 6 vals are p1, next 6 are p2, ... p6
-      uint8_t multiplier =  multiplierVals[i % numSensors];
+      float multiplier =  multiplierVals[i % numSensors];
 
       DEBUG_PRINT("Player ");
       DEBUG_PRINT(playerNum + 1);
@@ -144,7 +141,7 @@ void getSensorVals() {    // read input sensors on skee ball lanes
   }
 }
 
-void movePlayer(uint8_t playerNum, uint8_t multiplier) {  // calculate time period to move motor, move it
+void movePlayer(uint8_t playerNum, float multiplier) {  // calculate time period to move motor, move it
   unsigned long period = multiplier * 1000;
   motorPosition[playerNum] += period;
   playerMovementPeriod[playerNum] += period;
@@ -252,16 +249,35 @@ void playWinner() {
     "WIN3.WAV"
   };
 
+  unsigned long period = 4000; // total delay period to flash lights and play audio after game end (ms)
+  unsigned long lightPeriod = 250; // time between light flashes (ms)
+
   // call audio file
   playSdWav1.play(winSounds[soundNum]);
   delay(10); // wait for library to parse WAV info
 
   // lights
-  fill_solid(leds, NUM_LEDS, CRGB::White);
-  FastLED.show();
-
-  // wait until sound effect finishes playing
-  delay(4200);
+  bool lightOn = false;
+  unsigned long checkMillis = millis();
+  unsigned long previousMillis = 0;
+  unsigned long currentMillis = 0;
+  
+  while (millis() - checkMillis <= period) {
+    currentMillis = millis();
+    
+    if (currentMillis - previousMillis >= lightPeriod) {
+      if (lightOn) {
+        fill_solid(leds, NUM_LEDS, CRGB::Black);
+        FastLED.show();
+      } else {
+        fill_solid(leds, NUM_LEDS, CRGB::White);
+        FastLED.show();
+      }
+      
+      lightOn = !lightOn;
+      previousMillis = currentMillis;
+    }
+  }
 
   FastLED.clear();
 

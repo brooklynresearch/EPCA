@@ -19,13 +19,13 @@ const uint8_t numSensors = numPlayers * 3;
 //#define P6_LIMIT_RIGHT 13
 
 // LED pins
-#define LED_PIN 23
-#define NUM_LEDS 20
+#define LED_PIN 20
+#define NUM_LEDS 10
 
 /*  motor pins
  *   
  *  Driving DC motors with L293N, using 2 pins instead of 3
- *    Enable pin: always +5v
+ *    Enable pin: always +5v 
  *    InA: digital, HIGH = forward / LOW = backward  
  *    InB: analog, 0-255 / 255-0 depending on InA is HIGH / LOW
  * 
