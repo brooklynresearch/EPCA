@@ -52,7 +52,7 @@ void initGame() {   // runs once on setup
   }
 
   // setup LEDs
-  FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
+  FastLED.addLeds<WS2813, LED_PIN, GRB>(leds, NUM_LEDS);
   //FastLED.setBrightness(128);
 
   DEBUG_PRINTLN();
@@ -225,9 +225,11 @@ void getWinner() {  // check if right side limit switch is triggered
         DEBUG_PRINTLN();
         DEBUG_PRINTLN();
 
+        gameStarted = false;
+        
         playWinner();
 
-        gameStarted = false;
+
 
         DEBUG_PRINTLN();
         DEBUG_PRINTLN("---------------------------");
@@ -261,10 +263,10 @@ void playWinner() {
   unsigned long checkMillis = millis();
   unsigned long previousMillis = 0;
   unsigned long currentMillis = 0;
-  
+
   while (millis() - checkMillis <= period) {
     currentMillis = millis();
-    
+
     if (currentMillis - previousMillis >= lightPeriod) {
       if (lightOn) {
         fill_solid(leds, NUM_LEDS, CRGB::Black);
@@ -273,7 +275,7 @@ void playWinner() {
         fill_solid(leds, NUM_LEDS, CRGB::White);
         FastLED.show();
       }
-      
+
       lightOn = !lightOn;
       previousMillis = currentMillis;
     }

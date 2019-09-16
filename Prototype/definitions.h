@@ -19,8 +19,8 @@ const uint8_t numSensors = numPlayers * 3;
 //#define P6_LIMIT_RIGHT 13
 
 // LED pins
-#define LED_PIN 20
-#define NUM_LEDS 10
+#define LED_PIN 15
+#define NUM_LEDS 20
 
 /*  motor pins
  *   
