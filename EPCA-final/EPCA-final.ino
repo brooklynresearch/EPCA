@@ -7,12 +7,14 @@
 #include <SD.h>
 #include <FastLED.h>
 #include "definitions.h"
-#include "debug.h"
 
-#define DEBUG // comment out to turn of debug serial printout
+// comment out to turn of debug serial printout
+#define DEBUG_PRINT(x) Serial.print(x)
+#define DEBUG_PRINTLN(x) Serial.println(x)
 
 // game
 bool gameStarted = false;
+bool systemRestart = true;
 
 // motor movement
 const float playerAdvance = .75; // client wants 4" movement, .75 sec @ 255 on 168RPM ~= 4"
@@ -86,14 +88,6 @@ void resetGame() { // runs at start up or master reset
   // move players to home
   resetPlayers();
 
-
-  DEBUG_PRINTLN();
-  DEBUG_PRINTLN("---------------------------");
-  DEBUG_PRINTLN("Game reset");
-  DEBUG_PRINTLN("---------------------------");
-  DEBUG_PRINTLN();
-
-  gameStarted = true;
 }
 
 void setup() {
@@ -110,12 +104,12 @@ void setup() {
 
 void loop() {
   if (resetCheck()) resetGame();
+  getHome();
 
   if (gameStarted) {
     getSensorVals();
     playerCheck();
     getWinner();
-    getHome();
   }
 }
 
@@ -124,8 +118,8 @@ void getSensorVals() {    // read input sensors on skee ball lanes
     currentVal[i] = digitalRead(playerInputs[i]);
 
     if (!currentVal[i] && previousVal[i]) { // sensor has been triggered
-      uint8_t playerNum = floor(i / numSensors);  // first 6 vals are p1, next 6 are p2, ... p6
-      float multiplier =  multiplierVals[i % numSensors];
+      uint8_t playerNum = floor(i / 3);  // first 3 vals are p1, next 3 are p2, ... p6
+      float multiplier =  multiplierVals[i % 3];
 
       DEBUG_PRINT("Player ");
       DEBUG_PRINT(playerNum + 1);
@@ -188,8 +182,26 @@ void resetPlayers() {
     DEBUG_PRINT(i + 1);
     DEBUG_PRINTLN(" to home");
 
+    // quick forward and back to fix issue where left limit switches didn't get pressed when player was already against the left side
+    digitalWrite(motorDirectionA[i], HIGH); // move player forward: A = HIGH, B = 0-254 (0 is fastest)
+    analogWrite(motorDirectionB[i], 0);
+    delay(75);
     digitalWrite(motorDirectionA[i], LOW);   // move player backward: A = LOW, B = 255-1 (255 is fastest)
     analogWrite(motorDirectionB[i], 255);
+    delay(25);
+    digitalWrite(motorDirectionA[i], HIGH); // move player forward: A = HIGH, B = 0-254 (0 is fastest)
+    analogWrite(motorDirectionB[i], 0);
+    delay(75);
+    digitalWrite(motorDirectionA[i], LOW);   // move player backward: A = LOW, B = 255-1 (255 is fastest)
+    analogWrite(motorDirectionB[i], 255);
+    delay(25);
+
+    getHome();
+
+    if (motorPosition[i] != 0) {
+      digitalWrite(motorDirectionA[i], LOW);   // move player backward: A = LOW, B = 255-1 (255 is fastest)
+      analogWrite(motorDirectionB[i], 255);
+    }
   }
 
   bool allHome = false;
@@ -201,9 +213,21 @@ void resetPlayers() {
     uint8_t total = 0;
     for (int i = 0; i < numPlayers; i++) {
       total += motorPosition[i];
+      Serial.println(total);
     }
 
-    if (total == 0) allHome = true;
+    if (total == 0) {
+      Serial.println("All home!");
+
+      allHome = true;
+      gameStarted = true;
+
+      DEBUG_PRINTLN();
+      DEBUG_PRINTLN("---------------------------");
+      DEBUG_PRINTLN("Game reset");
+      DEBUG_PRINTLN("---------------------------");
+      DEBUG_PRINTLN();
+    }
 
   }
 }
@@ -226,10 +250,8 @@ void getWinner() {  // check if right side limit switch is triggered
         DEBUG_PRINTLN();
 
         gameStarted = false;
-        
+
         playWinner();
-
-
 
         DEBUG_PRINTLN();
         DEBUG_PRINTLN("---------------------------");
@@ -252,33 +274,60 @@ void playWinner() {
   };
 
   unsigned long period = 4000; // total delay period to flash lights and play audio after game end (ms)
-  unsigned long lightPeriod = 250; // time between light flashes (ms)
+  unsigned long lightPeriod = 50; // light timing
 
   // call audio file
   playSdWav1.play(winSounds[soundNum]);
   delay(10); // wait for library to parse WAV info
 
   // lights
-  bool lightOn = false;
   unsigned long checkMillis = millis();
   unsigned long previousMillis = 0;
   unsigned long currentMillis = 0;
 
+  // for pulse
+  bool lightOn = false;
+
+  // for up and down
+  uint8_t dot = 0;
+  bool forward = true;
+
   while (millis() - checkMillis <= period) {
     currentMillis = millis();
 
-    if (currentMillis - previousMillis >= lightPeriod) {
-      if (lightOn) {
-        fill_solid(leds, NUM_LEDS, CRGB::Black);
-        FastLED.show();
-      } else {
-        fill_solid(leds, NUM_LEDS, CRGB::White);
-        FastLED.show();
-      }
+        //pulse lights at lightPeriod ms
+        if (currentMillis - previousMillis >= lightPeriod) {
+          if (lightOn) {
+            fill_solid(leds, NUM_LEDS, CRGB::Black);
+            FastLED.show();
+          } else {
+            fill_solid(leds, NUM_LEDS, CRGB::White);
+            FastLED.show();
+          }
+    
+          lightOn = !lightOn;
+          previousMillis = currentMillis;
+        }
 
-      lightOn = !lightOn;
-      previousMillis = currentMillis;
-    }
+//    // light up and down strip, pixel movement at lightPeriod ms;
+//    if (currentMillis - previousMillis >= lightPeriod) {
+//      leds[dot] = CRGB::White;
+//      FastLED.show();
+//
+//      if (forward) {
+//        if (dot != 0) leds[dot - 1] = CRGB::Black;
+//        dot++;
+//      } else {
+//        leds[dot + 1] = CRGB::Black;
+//        dot--;
+//      }
+//
+//      FastLED.show();
+//
+//      if (dot >= 20) forward = false;
+//      if (dot <= 0) forward = true;
+//      previousMillis = currentMillis;
+//    }
   }
 
   FastLED.clear();
