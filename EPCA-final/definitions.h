@@ -5,7 +5,7 @@ const uint8_t numSensors = numPlayers * 3;
 // switch pins
 #define RESET_PIN 51
 
-#define P1_LIMIT_LEFT 55
+#define P1_LIMIT_LEFT 0
 #define P1_LIMIT_RIGHT 1
 #define P2_LIMIT_LEFT 2
 #define P2_LIMIT_RIGHT 3
