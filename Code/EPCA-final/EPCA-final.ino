@@ -274,7 +274,7 @@ void playWinner() {
   };
 
   unsigned long period = 4000; // total delay period to flash lights and play audio after game end (ms)
-  unsigned long lightPeriod = 50; // light timing
+  unsigned long lightPeriod = 250; // light timing
 
   // call audio file
   playSdWav1.play(winSounds[soundNum]);
