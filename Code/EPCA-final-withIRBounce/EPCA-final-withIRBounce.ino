@@ -25,12 +25,30 @@ const float multiplierVals[3] = {
 };
 
 const float playerAdjustment[6] = {
-  1, //PLAYER ONE
+  3, //PLAYER ONE
   1, //PLAYER TWO
   1, //PLAYER THREE
   1, //PLAYER FOUR
-  3, //PLAYER FIVE
-  2, //PLAYER SIX
+  2, //PLAYER FIVE
+  3, //PLAYER SIX
+};
+
+long bounceTimingsForIR[36] = {
+  0,0,0,  //PLAYER ONE
+  0,0,0,  //PLAYER TWO
+  0,0,0,  //PLAYER THREE
+  0,0,0,  //PLAYER FOUR
+  0,0,0,  //PLAYER FIVE
+  0,0,0,  //PLAYER SIX
+};
+
+uint8_t irThreshold[36] = {
+  10, 10, 10, 
+  10, 10, 10,
+  10, 10, 10,
+  60, 60, 60,
+  10, 10, 10,
+  10, 10, 10,
 };
 
 // lights
@@ -126,7 +144,7 @@ void getSensorVals() {    // read input sensors on skee ball lanes
   for (uint8_t i = 0; i < numSensors; i++) {
     currentVal[i] = digitalRead(playerInputs[i]);
 
-    if (!currentVal[i] && previousVal[i]) { // sensor has been triggered
+    if (!currentVal[i] && previousVal[i] && (millis() - bounceTimingsForIR[i] > irThreshold[i])) { // sensor has been triggered
       uint8_t playerNum = floor(i / 3);  // first 3 vals are p1, next 3 are p2, ... p6
       float multiplier =  multiplierVals[i % 3];
 
@@ -137,6 +155,7 @@ void getSensorVals() {    // read input sensors on skee ball lanes
       DEBUG_PRINT(" was triggered.");
       DEBUG_PRINTLN();
 
+      bounceTimingsForIR[i] = millis();
       movePlayer(playerNum, multiplier);
     }
 
@@ -145,7 +164,7 @@ void getSensorVals() {    // read input sensors on skee ball lanes
 }
 
 void movePlayer(uint8_t playerNum, float multiplier) {  // calculate time period to move motor, move it
-  unsigned long period = multiplier * 1000;
+  float period = multiplier * 2000;
   motorPosition[playerNum] += period * playerAdjustment[playerNum];
   playerMovementPeriod[playerNum] += period;
 
@@ -162,8 +181,11 @@ void movePlayer(uint8_t playerNum, float multiplier) {  // calculate time period
   DEBUG_PRINTLN();
 
   digitalWrite(motorDirectionA[playerNum], HIGH); // move player forward: A = HIGH, B = 0-254 (0 is fastest)
-  analogWrite(motorDirectionB[playerNum], 0);
-
+  if(playerNum == 2){
+    analogWrite(motorDirectionB[playerNum], 60);
+  } else {
+    analogWrite(motorDirectionB[playerNum], 0);
+  }
   if (!motorMoving[playerNum]) startMillis[playerNum] = millis(); // start the timer the first time -- if motor is already moving, the player triggered a sensor before the original movement finished
   motorMoving[playerNum] = true;
 }
@@ -209,7 +231,7 @@ void resetPlayers() {
 
     if (motorPosition[i] != 0) {
       digitalWrite(motorDirectionA[i], LOW);   // move player backward: A = LOW, B = 255-1 (255 is fastest)
-      analogWrite(motorDirectionB[i], 255);
+       analogWrite(motorDirectionB[i], 255);
     }
   }
 

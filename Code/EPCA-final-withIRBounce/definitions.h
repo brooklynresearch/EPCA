@@ -57,7 +57,7 @@ const uint8_t numSensors = numPlayers * 3;
 #define P2_MIDDLE 37
 #define P2_TOP 36
 #define P3_BOTTOM 14
-#define P3_MIDDLE 13
+#define P3_MIDDLE 13 
 #define P3_TOP 39
 #define P4_BOTTOM 17
 #define P4_MIDDLE 16
@@ -129,7 +129,7 @@ byte motorDirectionB[numPlayers] = {
   P6_MOTOR_DIR_B
 };
 
-uint8_t motorPosition[numPlayers] = {
+float motorPosition[numPlayers] = {
   0, 0, 0, 0, 0, 0
 };
 
@@ -141,7 +141,7 @@ unsigned long startMillis[numPlayers] = {
   0, 0, 0, 0, 0, 0
 };
 
-unsigned long playerMovementPeriod[numPlayers] = {
+float playerMovementPeriod[numPlayers] = {
   0, 0, 0, 0, 0, 0
 };
 
@@ -150,14 +150,14 @@ uint8_t currentVal[numSensors];
 uint8_t previousVal[numSensors];
 
 // de-bounced button objects
-Bounce resetButton = Bounce(RESET_PIN, 10);
+Bounce resetButton = Bounce(RESET_PIN, 20);
 
-Bounce p1LimitLeft = Bounce(P1_LIMIT_LEFT, 10);
-Bounce p2LimitLeft = Bounce(P2_LIMIT_LEFT, 10);
-Bounce p3LimitLeft = Bounce(P3_LIMIT_LEFT, 10);
-Bounce p4LimitLeft = Bounce(P4_LIMIT_LEFT, 10);
-Bounce p5LimitLeft = Bounce(P5_LIMIT_LEFT, 10);
-Bounce p6LimitLeft = Bounce(P6_LIMIT_LEFT, 10);
+Bounce p1LimitLeft = Bounce(P1_LIMIT_LEFT, 100);
+Bounce p2LimitLeft = Bounce(P2_LIMIT_LEFT, 50);
+Bounce p3LimitLeft = Bounce(P3_LIMIT_LEFT, 50);
+Bounce p4LimitLeft = Bounce(P4_LIMIT_LEFT, 50);
+Bounce p5LimitLeft = Bounce(P5_LIMIT_LEFT, 50);
+Bounce p6LimitLeft = Bounce(P6_LIMIT_LEFT, 50);
 
 Bounce p1LimitRight = Bounce(P1_LIMIT_RIGHT, 50);
 Bounce p2LimitRight = Bounce(P2_LIMIT_RIGHT, 50);

@@ -29,8 +29,26 @@ const float playerAdjustment[6] = {
   1, //PLAYER TWO
   1, //PLAYER THREE
   1, //PLAYER FOUR
-  3, //PLAYER FIVE
-  2, //PLAYER SIX
+  1, //PLAYER FIVE
+  1, //PLAYER SIX
+};
+
+long bounceTimingsForIR[36] = {
+  0,0,0,  //PLAYER ONE
+  0,0,0,  //PLAYER TWO
+  0,0,0,  //PLAYER THREE
+  0,0,0,  //PLAYER FOUR
+  0,0,0,  //PLAYER FIVE
+  0,0,0,  //PLAYER SIX
+};
+
+uint8_t irThreshold[36] = {
+  10, 10, 10, 
+  10, 10, 10,
+  10, 10, 10,
+  10, 10, 10,
+  10, 10, 10,
+  10, 10, 10,
 };
 
 // lights
@@ -47,10 +65,13 @@ void initGame() {   // runs once on setup
   pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
 
+  pinMode(LOAD_PIN, OUTPUT);
+  pinMode(ENABLE_PIN, OUTPUT);
+  pinMode(CLOCK_PIN, OUTPUT);
+  pinMode(DATA_PIN, INPUT);
+
   // init all IO pins
   for (int i = 0; i < numSensors; i++) {
-    pinMode(playerInputs[i], INPUT_PULLUP);
-    digitalWrite(playerInputs[i], HIGH); // need initial pullup for beam break sensors
 
     if (i < numPlayers) {
       pinMode(limitSwitchesLeft[i], INPUT_PULLUP);
@@ -65,6 +86,13 @@ void initGame() {   // runs once on setup
   // setup LEDs
   FastLED.addLeds<WS2813, LED_PIN, GRB>(leds, NUM_LEDS);
   //FastLED.setBrightness(128);
+
+  digitalWrite(CLOCK_PIN, LOW);
+  digitalWrite(LOAD_PIN, HIGH);
+
+  SENSOR_VALUES = read_shift_regs();
+  print_values();
+  OLD_SENSOR_VALUES = SENSOR_VALUES;
 
   DEBUG_PRINTLN();
   DEBUG_PRINTLN();
@@ -116,36 +144,83 @@ void loop() {
   getHome();
 
   if (gameStarted) {
-    getSensorVals();
+    SENSOR_VALUES = read_shift_regs();
+    if(SENSOR_VALUES != OLD_SENSOR_VALUES){
+      print_values();
+      checkMovement();
+      OLD_SENSOR_VALUES = SENSOR_VALUES;
+    }
     playerCheck();
     getWinner();
   }
 }
 
-void getSensorVals() {    // read input sensors on skee ball lanes
-  for (uint8_t i = 0; i < numSensors; i++) {
-    currentVal[i] = digitalRead(playerInputs[i]);
+unsigned long read_shift_regs()
+{
+    long bitVal;
+    unsigned long bytesVal = 0;
 
-    if (!currentVal[i] && previousVal[i]) { // sensor has been triggered
-      uint8_t playerNum = floor(i / 3);  // first 3 vals are p1, next 3 are p2, ... p6
-      float multiplier =  multiplierVals[i % 3];
+    digitalWrite(ENABLE_PIN, HIGH);
+    digitalWrite(LOAD_PIN, LOW);
+    delayMicroseconds(5);
+    digitalWrite(LOAD_PIN, HIGH);
+    digitalWrite(ENABLE_PIN, LOW);
 
-      DEBUG_PRINT("Player ");
-      DEBUG_PRINT(playerNum + 1);
-      DEBUG_PRINT(" sensor on pin ");
-      DEBUG_PRINT(playerInputs[i]);
-      DEBUG_PRINT(" was triggered.");
-      DEBUG_PRINTLN();
+    for(int i = 0; i < DATA_WIDTH; i++)
+    {
+        bitVal = digitalRead(DATA_PIN);
+        motorTriggerValue[i] = bitVal;
+        bytesVal |= (bitVal << ((DATA_WIDTH-1) - i));
 
-      movePlayer(playerNum, multiplier);
+        digitalWrite(CLOCK_PIN, HIGH);
+        delayMicroseconds(5);
+        digitalWrite(CLOCK_PIN, LOW);
     }
 
-    previousVal[i] = currentVal[i];
+    return(bytesVal);
+}
+
+void print_values() { 
+  byte i; 
+
+  Serial.println("*Shift Register Values:*\r\n");
+
+  for(byte i=0; i<=DATA_WIDTH-1; i++) 
+  { 
+    Serial.print("S");
+    Serial.print(i);
+    Serial.print(" "); 
+  }
+  Serial.println();
+  for(byte i=0; i<=DATA_WIDTH-1; i++) 
+  { 
+    Serial.print(SENSOR_VALUES >> i & 1, BIN); 
+    
+    if(i>8){Serial.print(" ");}
+    Serial.print("  "); 
+    
+  } 
+  
+  Serial.print("\n"); 
+  Serial.println();Serial.println();
+
+}
+
+void checkMovement(){
+  for(int i=0; i< DATA_WIDTH; i++){
+    if(!motorTriggerValue[i]){
+      Serial.print("Player ");
+      Serial.print(motorLookUp[i]);
+      Serial.print(" with speed x=");
+      Serial.print(multiplierLookUp[i]);
+      Serial.println(" moved");
+      movePlayer(motorLookUp[i], multiplierLookUp[i]);
+    }
   }
 }
 
 void movePlayer(uint8_t playerNum, float multiplier) {  // calculate time period to move motor, move it
-  unsigned long period = multiplier * 1000;
+  float period = multiplier * 2000;
   motorPosition[playerNum] += period * playerAdjustment[playerNum];
   playerMovementPeriod[playerNum] += period;
 
@@ -162,8 +237,11 @@ void movePlayer(uint8_t playerNum, float multiplier) {  // calculate time period
   DEBUG_PRINTLN();
 
   digitalWrite(motorDirectionA[playerNum], HIGH); // move player forward: A = HIGH, B = 0-254 (0 is fastest)
-  analogWrite(motorDirectionB[playerNum], 0);
-
+  if(playerNum == 2){
+    analogWrite(motorDirectionB[playerNum], 60);
+  } else {
+    analogWrite(motorDirectionB[playerNum], 0);
+  }
   if (!motorMoving[playerNum]) startMillis[playerNum] = millis(); // start the timer the first time -- if motor is already moving, the player triggered a sensor before the original movement finished
   motorMoving[playerNum] = true;
 }
@@ -209,7 +287,7 @@ void resetPlayers() {
 
     if (motorPosition[i] != 0) {
       digitalWrite(motorDirectionA[i], LOW);   // move player backward: A = LOW, B = 255-1 (255 is fastest)
-      analogWrite(motorDirectionB[i], 255);
+       analogWrite(motorDirectionB[i], 255);
     }
   }
 
